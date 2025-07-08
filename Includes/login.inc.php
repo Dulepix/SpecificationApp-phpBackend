@@ -20,4 +20,4 @@ require_once "../Classes/Functions.php";
 require_once "../Classes/Login.php";
 
 $login = new Login($email, $password);
-$login->CheckLoginDetails();
+$login->CheckLoginDetails($link->getLink());

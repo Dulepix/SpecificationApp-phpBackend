@@ -10,7 +10,7 @@ class Login extends Connection{
         $this->password = $password;
     }
 
-    public function CheckLoginDetails() {
+    public function CheckLoginDetails($link) {
         $conn = $this->connect();
     
         if ($conn->connect_error) {
@@ -37,7 +37,7 @@ class Login extends Connection{
                         setcookie("refreshToken", $token, [
                             "expires" => time() + 3600,
                             "path" => "/",
-                            "domain" => "localhost",
+                            "domain" => $link,
                             "secure" => false,
                             "httponly" => true,
                             "samesite" => "Lax"
