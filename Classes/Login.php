@@ -37,11 +37,10 @@ class Login extends Connection{
                         setcookie("refreshToken", $token, [
                             "expires" => time() + 3600,
                             "path" => "/",
-                            "secure" => false,
+                            "secure" => true,       
                             "httponly" => true,
-                            "samesite" => "Lax"
+                            "samesite" => "None"  
                         ]);
-                    
                         echo json_encode(["status" => "success", "message" => "Login successful"]);
                     } else {
                         echo json_encode(["status" => "error", "message" => "Failed to save a token, please try again"]);
