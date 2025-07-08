@@ -37,7 +37,6 @@ class Login extends Connection{
                         setcookie("refreshToken", $token, [
                             "expires" => time() + 3600,
                             "path" => "/",
-                            "domain" => $link,
                             "secure" => false,
                             "httponly" => true,
                             "samesite" => "Lax"
