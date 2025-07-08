@@ -1,7 +1,7 @@
 <?php
 
 class Link{
-    private $webadress = "http://localhost:5173";
+    private $webadress = "https://specificationsapp.netlify.app/";
 
     public function getLink(){
         return $this->webadress;
