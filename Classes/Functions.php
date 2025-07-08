@@ -27,13 +27,13 @@ class Functions extends Connection{
         $publicKeyDetails = openssl_pkey_get_details($privateKey);
         $publicKeyPEM = $publicKeyDetails["key"];
     
-        file_put_contents('C:/xampp/htdocs/react_backend/keys/private_key.pem', $privateKeyPEM);
-        file_put_contents('C:/xampp/htdocs/react_backend/keys/public_key.pem', $publicKeyPEM);
+        file_put_contents(__DIR__ . '/../keys/private_key.pem', $privateKeyPEM);
+        file_put_contents(__DIR__ . '/../keys/public_key.pem', $publicKeyPEM);
     
         echo "Private and public keys generated successfully";
     }
     public function generateToken($exp, $email): string {
-        $privateKey = file_get_contents("C:/xampp/htdocs/react_backend/keys/private_key.pem");
+        $privateKey = file_get_contents(__DIR__ . '/../keys/private_key.pem');
 
         $payload = [
             "iss" => "Dule",
@@ -47,7 +47,7 @@ class Functions extends Connection{
     }
     public function validateToken($token) {
         if($token == null) return false;
-        $publicKey = file_get_contents("C:/xampp/htdocs/react_backend/keys/public_key.pem");
+        $publicKey = file_get_contents(__DIR__ . '/../keys/public_key.pem');
         try{
             $decoded = JWT::decode($token, new Key($publicKey, 'RS256'));
 
@@ -78,9 +78,5 @@ class Functions extends Connection{
             return false;
             exit;
         }
-    }
-
-    public function getEmailFromToken(){
-
     }
 }
