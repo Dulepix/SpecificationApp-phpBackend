@@ -1,5 +1,14 @@
 <?php
+$method = $_SERVER['REQUEST_METHOD'];
+
+if ($method !== 'GET' && $method !== 'HEAD') {
+    http_response_code(405); // Method Not Allowed
+    header('Allow: GET, HEAD');
+    exit;
+}
 
 http_response_code(200);
 
-echo "pong";
+if ($method === 'GET') {
+    echo "pong";
+}
