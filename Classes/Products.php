@@ -8,6 +8,8 @@ class Products extends Connection {
     }
 
     public function searchProducts($product, $offset) {
+        $terms = explode(' ', mb_strtolower($product, 'UTF-8')); // Podeli unos po razmacima
+
         $sql = "
             SELECT 
                 product_size.Id AS ProductSizeId,
@@ -21,14 +23,25 @@ class Products extends Connection {
             FROM products
             INNER JOIN product_size ON product_size.ProductId = products.Id
             INNER JOIN categories   ON categories.Id   = products.CategoryId
-            WHERE CONCAT_WS(' ',
-                    products.Name,
-                    (SELECT sizes.Size FROM sizes WHERE sizes.Id = product_size.SizeIdFirst),
-                    (SELECT sizes.Size FROM sizes WHERE sizes.Id = product_size.SizeIdSecond),
-                    (SELECT sizes.Size FROM sizes WHERE sizes.Id = product_size.SizeIdThird)
-                ) LIKE '%" . $this->conn->real_escape_string(mb_strtolower($product, 'UTF-8')) . "%'
+            WHERE 
+        ";
+
+        $whereParts = [];
+        foreach ($terms as $term) {
+            $escaped = $this->conn->real_escape_string($term);
+            $whereParts[] = "CONCAT_WS(' ',
+                products.Name,
+                (SELECT sizes.Size FROM sizes WHERE sizes.Id = product_size.SizeIdFirst),
+                (SELECT sizes.Size FROM sizes WHERE sizes.Id = product_size.SizeIdSecond),
+                (SELECT sizes.Size FROM sizes WHERE sizes.Id = product_size.SizeIdThird)
+            ) LIKE '%$escaped%'";
+        }
+
+        $sql .= implode(' AND ', $whereParts);
+
+        $sql .= "
             ORDER BY categories.Name ASC, products.Name ASC, product_size.Id ASC
-            LIMIT 20 OFFSET " . $offset;
+            LIMIT 20 OFFSET " . intval($offset);
 
         if ($this->conn->connect_error) {
             die(json_encode(["status" => "error", "message" => "Database connection failed: " . $this->conn->connect_error]));

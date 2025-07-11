@@ -30,3 +30,8 @@ if($data['type'] == "editSpecification"){
     $user = new User($userId);
     $user->handleUpdateSpecification($data);
 }
+
+if($data['type'] == "deleteSpecification"){
+    $user = new User($userId);
+    $user->deleteSpecification($data['editspecformId']);
+}

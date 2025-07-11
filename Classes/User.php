@@ -61,7 +61,7 @@ class User extends Connection{
                 "Id" => $row["Id"],
                 "Name" => $row["Name"],
                 "Visibility" => $row["Visibility"],
-                "CreatedAt" => $row["CreatedAt"],
+                "CreatedAt" => explode(' ', $row["CreatedAt"])[0],
                 "LastEdited" => $row["LastEdited"]
             ];
         }
@@ -197,6 +197,21 @@ class User extends Connection{
     }
 
     public function deleteSpecification($specificationId){
+        $stmt = $this->conn->prepare("DELETE FROM specifications_product_size WHERE SpecificationsId = ?");
+        $stmt->bind_param("i", $specificationId);
+        
+        if($stmt->execute()){
+            $stmt = $this->conn->prepare("DELETE FROM specifications WHERE Id = ? AND UserId = ?");
+            $stmt->bind_param("ii", $specificationId, $this->userId);
+            if($stmt->execute()){
+                echo json_encode(["status" => "success", "message" => "Specification deleted successfully"]);
+            }else{
+                echo json_encode(["status" => "error", "message" => "Failed to delete specification"]);
+            }
+        }else{
+            echo json_encode(["status" => "error", "message" => "Failed to delete specification"]);
+        }
 
+        $stmt->close();
     }
 }
