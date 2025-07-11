@@ -12,10 +12,11 @@ class User extends Connection{
 
     public function __destruct()
     {
-        if ($this->conn && $this->conn->ping()) {
+        if ($this->conn instanceof mysqli) {
             $this->conn->close();
         }
     }
+
 
 
      public function getUsername(): array
@@ -90,5 +91,112 @@ class User extends Connection{
         }
 
         $stmt->close();
+    }
+
+    public function getSpecification($specId){
+        $stmt = $this->conn->prepare("SELECT Name, Visibility, Price FROM specifications WHERE Id = ? AND UserId = ?");
+        $stmt->bind_param("ii", $specId, $this->userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $stmt->close();
+        
+        if ($row = $result->fetch_assoc()) {
+            $stmt = $this->conn->prepare("
+                SELECT 
+                    specifications_product_size.Product_sizeId AS ProductSizeId, 
+                    specifications_product_size.Quantity AS Quantity, 
+                    products.Name AS Proizvod,
+                    CONCAT_WS(' ',
+                        (SELECT sizes.Size FROM sizes WHERE sizes.Id = product_size.SizeIdFirst),
+                        (SELECT sizes.Size FROM sizes WHERE sizes.Id = product_size.SizeIdSecond),
+                        (SELECT sizes.Size FROM sizes WHERE sizes.Id = product_size.SizeIdThird)
+                    ) AS Sizes
+                FROM specifications_product_size 
+                INNER JOIN product_size ON product_size.Id = specifications_product_size.Product_sizeId
+                INNER JOIN products ON products.Id = product_size.ProductId
+                WHERE specifications_product_size.SpecificationsId = ?
+                ORDER BY specifications_product_size.Position ASC
+            ");
+
+            $stmt->bind_param("i", $specId);
+            $stmt->execute();
+
+            $result2 = $stmt->get_result();
+            $data = [];
+
+            while ($row2 = $result2->fetch_assoc()) {
+                $data[] = [
+                    "ProductSizeId" => $row2["ProductSizeId"],
+                    "Product" => $row2["Proizvod"],
+                    "Sizes" => $row2["Sizes"],
+                    "Quantity" => $row2["Quantity"],
+                    "Checked" => false
+                ];
+            }
+
+            $stmt->close();
+
+            echo json_encode([
+                "status" => "success",
+                "specName" => $row['Name'],
+                "visibility" => $row['Visibility'],
+                "price" => $row['Price'],
+                "data" => $data
+            ]);
+        } else {
+            echo json_encode([
+                "status" => "error",
+                "message" => "Specification not found"
+            ]);
+        }
+    }
+
+    public function updateSpecification($specName, $visibility, $price, $specificationId): bool{
+        $stmt = $this->conn->prepare("UPDATE specifications SET Name = ?, Visibility = ?, Price = ? WHERE Id = ? AND UserId = ?");
+        $stmt->bind_param("sidii", $specName, $visibility, $price, $specificationId, $this->userId);
+        
+        if($stmt->execute())
+            return true;
+        else
+            return false;
+        
+        $stmt->close();
+    }
+
+    public function updateProducts($data, $specificationId): bool{
+        $stmt = $this->conn->prepare("DELETE FROM specifications_product_size WHERE SpecificationsId = ?");
+        $stmt->bind_param("i", $specificationId);
+        $stmt->execute();
+        $stmt->close();
+
+        foreach($data as $item){
+            $stmt2 = $this->conn->prepare("INSERT INTO specifications_product_size (SpecificationsId, Product_sizeId, Quantity, Position) VALUES (?, ?, ?, ?)");
+            $stmt2->bind_param("iisi", $specificationId, $item['ProductSizeId'], $item['Quantity'], $item['Order']);
+            if(!$stmt2->execute()){
+                return false; // If any insert fails, return false
+            }
+            $stmt2->close();
+        }
+
+        return true;
+
+    }
+
+    public function handleUpdateSpecification($data){
+        $updateSpecification = $this->updateSpecification($data['specName'], $data['visibility'], $data['price'], $data['editspecformId']);
+        $updateProducts = true;
+        if(isset($data['products'])){
+            $updateProducts = $this->updateProducts($data['products'], $data['editspecformId']);
+        }
+
+        if($updateSpecification && $updateProducts){
+            echo json_encode(["status" => "success", "message" => "Specification updated successfully"]);
+        }else{
+            echo json_encode(["status" => "error", "message" => "Failed to update specification, try again later."]);
+        }
+    }
+
+    public function deleteSpecification($specificationId){
+
     }
 }

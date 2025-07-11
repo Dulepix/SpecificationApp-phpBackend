@@ -20,3 +20,13 @@ if($data['type'] == "createSpecification"){
     $user = new User($userId);
     $user->insertSpecification($data['specName'], $data['visibility'], $data['price'], $data['products']);
 }
+
+if($data['type'] == "editSpecificationGet"){
+    $user = new User($userId);
+    $user->getSpecification($data['specId']);
+}
+
+if($data['type'] == "editSpecification"){
+    $user = new User($userId);
+    $user->handleUpdateSpecification($data);
+}

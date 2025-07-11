@@ -30,6 +30,10 @@ class Products extends Connection {
             ORDER BY categories.Name ASC, products.Name ASC, product_size.Id ASC
             LIMIT 20 OFFSET " . $offset;
 
+        if ($this->conn->connect_error) {
+            die(json_encode(["status" => "error", "message" => "Database connection failed: " . $this->conn->connect_error]));
+        }
+
         $stmt = $this->conn->prepare($sql);
         $stmt->execute();
         $result = $stmt->get_result();

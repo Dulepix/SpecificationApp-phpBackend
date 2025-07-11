@@ -37,9 +37,11 @@ class Login extends Connection{
                         setcookie("refreshToken", $token, [
                             "expires" => time() + 3600,
                             "path" => "/",
-                            "secure" => true,       
+                            "secure" => true,
+                            // "secure" => false,
                             "httponly" => true,
-                            "samesite" => "None"  
+                            "samesite" => "None"
+                            // "samesite" => "Lax"
                         ]);
                         echo json_encode(["status" => "success", "message" => "Login successful"]);
                     } else {
