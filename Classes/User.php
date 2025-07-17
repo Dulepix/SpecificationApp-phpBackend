@@ -283,13 +283,36 @@ class User extends Connection{
         return $spreadsheet;
     }
 
-    public function downloadSpecification($specificationId) {
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment; filename="specifikacija_' . $specificationId . '.xlsx"');
-        header('Cache-Control: max-age=0');
+public function downloadSpecification($specificationId) {
+    ob_end_clean();
+    ob_start();
+    ini_set('display_errors', 0);
+    error_reporting(0);
 
-        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($this->makeFile($specificationId));
-        $writer->save('php://output');
+    $spreadsheet = $this->makeFile($specificationId);
+    $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+
+    $tmpPath = sys_get_temp_dir() . '/spec_' . uniqid() . '.xlsx';
+    $writer->save($tmpPath);
+
+    // VALIDACIJA fajla
+    try {
+        $test = \PhpOffice\PhpSpreadsheet\IOFactory::load($tmpPath);
+    } catch (\Throwable $e) {
+        http_response_code(500);
+        header('Content-Type: text/plain');
+        echo "Greška: Fajl nije validan XLSX format!";
+        unlink($tmpPath);
         exit;
     }
+
+    // Slanje fajla
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="specifikacija_' . $specificationId . '.xlsx"');
+    header('Cache-Control: max-age=0');
+    readfile($tmpPath);
+    unlink($tmpPath);
+    exit;
+}
+
 }
