@@ -1,4 +1,11 @@
 <?php
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use Firebase\JWT\ExpiredException;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 class User extends Connection{
     private $userId;
@@ -16,8 +23,6 @@ class User extends Connection{
             $this->conn->close();
         }
     }
-
-
 
      public function getUsername(): array
     {
@@ -213,5 +218,78 @@ class User extends Connection{
         }
 
         $stmt->close();
+    }
+
+    public function makeFile($specificationId): \PhpOffice\PhpSpreadsheet\Spreadsheet{
+        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load(__DIR__ . '/../Template.xlsx');
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $stmt = $this->conn->prepare("
+            SELECT Name, Price, CreatedAt FROM specifications WHERE Id = ?
+        ");
+        $stmt->bind_param("i", $specificationId);
+        if(!$stmt->execute()){
+            throw new Exception("Something went wrong");
+        }
+        $result = $stmt->get_result();
+        $result = $result->fetch_assoc();
+
+        $sheet->setCellValue('D5', $result['Name']);
+
+        $price = $result['Price'];
+        $date = explode(' ', $result['CreatedAt'])[0];
+
+        $stmt = $this->conn->prepare("
+            SELECT 
+                specifications_product_size.Product_sizeId AS ProductSizeId, 
+                specifications_product_size.Quantity AS Quantity, 
+                specifications_product_size.Position AS Position,
+                products.Name AS Proizvod,
+                CONCAT_WS(' ',
+                    (SELECT sizes.Size FROM sizes WHERE sizes.Id = product_size.SizeIdFirst),
+                    (SELECT sizes.Size FROM sizes WHERE sizes.Id = product_size.SizeIdSecond),
+                    (SELECT sizes.Size FROM sizes WHERE sizes.Id = product_size.SizeIdThird)
+                ) AS Sizes
+            FROM specifications_product_size 
+            INNER JOIN product_size ON product_size.Id = specifications_product_size.Product_sizeId
+            INNER JOIN products ON products.Id = product_size.ProductId
+            WHERE specifications_product_size.SpecificationsId = ?
+            ORDER BY specifications_product_size.Position ASC
+        ");
+        $stmt->bind_param("i", $specificationId);
+        if(!$stmt->execute()){
+            throw new Exception("Something went wrong");
+        }
+        $result = $stmt->get_result();
+        $rowIndex = 12;
+        while ($row = $result->fetch_assoc()) {
+            $sheet->setCellValue('B' . $rowIndex, $row['Position']);
+            $sheet->getStyle('B' . $rowIndex)->getAlignment()->setVertical(Alignment::VERTICAL_TOP);
+            $sheet->setCellValue('C' . $rowIndex, $row['Proizvod'] . ' (' . $row['Sizes'] . ')');
+            $sheet->getStyle('C' . $rowIndex)->getAlignment()->setWrapText(true);
+            $sheet->setCellValue('E' . $rowIndex, $row['Quantity']);
+            $sheet->getStyle('E' . $rowIndex)->getAlignment()->setVertical(Alignment::VERTICAL_TOP);
+            $rowIndex++;
+        } 
+
+        $sheet->setCellValue('B' . $rowIndex + 3, "IZVOĐENJE RADOVA " . $price . " €");
+        $sheet->getStyle('B' . $rowIndex + 3)->getFont()->setBold(true);
+        $sheet->setCellValue('B' . $rowIndex + 4, "IZVOĐAČ: \"TERMOMANIJA\"");
+        $sheet->setCellValue('B' . $rowIndex + 5, "DEJAN KRSTIĆ - KALUĐERICA");
+        $sheet->setCellValue('B' . $rowIndex + 6, "mob. 064/2426-500");
+        $sheet->setCellValue('E' . $rowIndex + 3, $date);
+
+
+        return $spreadsheet;
+    }
+
+    public function downloadSpecification($specificationId) {
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="specifikacija_' . $specificationId . '.xlsx"');
+        header('Cache-Control: max-age=0');
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($this->makeFile($specificationId));
+        $writer->save('php://output');
+        exit;
     }
 }

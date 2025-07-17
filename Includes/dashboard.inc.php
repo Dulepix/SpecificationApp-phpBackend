@@ -35,3 +35,8 @@ if($data['type'] == "deleteSpecification"){
     $user = new User($userId);
     $user->deleteSpecification($data['editspecformId']);
 }
+
+if($data['type'] == "downloadSpecification"){
+    $user = new User($userId);
+    $user->downloadSpecification($data['editspecformId']);
+}
