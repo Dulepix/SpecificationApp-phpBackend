@@ -220,12 +220,45 @@ class User extends Connection{
         $stmt->close();
     }
 
+    public function getProfileDetails(){
+        $stmt = $this->conn->prepare("SELECT Name, Username, Company, Telnumber FROM users WHERE Id = ?");
+        $stmt->bind_param("i", $this->userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $stmt->close();
+
+        if($row = $result->fetch_assoc()){
+            echo json_encode([
+                "status" => "success",
+                "fullname" => $row['Name'],
+                "username" => $row['Username'],
+                "company" => $row['Company'],
+                "telnumber" => $row['Telnumber']
+            ]);
+        }else{
+            echo json_encode(["status" => "error", "message" => "User not found"]);
+        }
+    }
+
+    public function updateProfileDetails($name, $username, $company, $telnumber){
+        $stmt = $this->conn->prepare("UPDATE users SET Name = ?, Username = ?, Company = ?, Telnumber = ? WHERE Id = ?");
+        $stmt->bind_param("ssssi", $name, $username, $company, $telnumber, $this->userId);
+        
+        if($stmt->execute()){
+            echo json_encode(["status" => "success", "message" => "Profile updated successfully"]);
+        }else{
+            echo json_encode(["status" => "error", "message" => "Failed to update profile"]);
+        }
+
+        $stmt->close();
+    }
+
     public function makeFile($specificationId): \PhpOffice\PhpSpreadsheet\Spreadsheet{
         $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load(__DIR__ . '/../Template.xlsx');
         $sheet = $spreadsheet->getActiveSheet();
 
         $stmt = $this->conn->prepare("
-            SELECT Name, Price, CreatedAt FROM specifications WHERE Id = ?
+            SELECT specifications.Name as specName, specifications.Price, specifications.CreatedAt, users.Name, users.Company, users.Telnumber FROM specifications INNER JOIN users ON users.Id = specifications.UserId WHERE specifications.Id = ?
         ");
         $stmt->bind_param("i", $specificationId);
         if(!$stmt->execute()){
@@ -234,10 +267,13 @@ class User extends Connection{
         $result = $stmt->get_result();
         $result = $result->fetch_assoc();
 
-        $sheet->setCellValue('D5', $result['Name']);
+        $sheet->setCellValue('D5', $result['specName']);
 
         $price = $result['Price'];
         $date = explode(' ', $result['CreatedAt'])[0];
+        $name = $result['Name'];
+        $company = $result['Company'];
+        $telnumber = $result['Telnumber'];
 
         $stmt = $this->conn->prepare("
             SELECT 
@@ -274,9 +310,13 @@ class User extends Connection{
 
         $sheet->setCellValue('B' . $rowIndex + 3, "IZVOĐENJE RADOVA " . $price . " €");
         $sheet->getStyle('B' . $rowIndex + 3)->getFont()->setBold(true);
-        $sheet->setCellValue('B' . $rowIndex + 4, "IZVOĐAČ: \"TERMOMANIJA\"");
-        $sheet->setCellValue('B' . $rowIndex + 5, "DEJAN KRSTIĆ - KALUĐERICA");
-        $sheet->setCellValue('B' . $rowIndex + 6, "mob. 064/2426-500");
+        if($company != ''){
+            $sheet->setCellValue('B' . $rowIndex + 4, "IZVOĐAČ: \"" . $company . "\"");
+        }
+        $sheet->setCellValue('B' . $rowIndex + 5, strtoupper($name));
+        if($telnumber != ''){
+            $sheet->setCellValue('B' . $rowIndex + 6, "mob. ". $telnumber);
+        }
         $sheet->setCellValue('E' . $rowIndex + 3, $date);
 
 
